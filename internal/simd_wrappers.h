@@ -24,6 +24,10 @@
 
 namespace gemmlowp {
 
+// qiuhan 用来推断如果需要操作ScalarCount个scalartype类型的数据的话,用哪种类型寄存器更好
+// qiuhan 譬如加载20个uint8类型的数据，RegisterType<int8, 20>::Type为__m128i
+// qiuhan 如果是10个unint8, RegisterType<uint8, 10>::Type为uint32
+// qiuhan 如果是3个uint8, RegisterType<uint8, 10>::Type为uint8
 template <typename ScalarType, int ScalarCount>
 struct RegisterType {
   using Type = ScalarType;
@@ -41,6 +45,7 @@ inline void MulAdd(std::int32_t lhs, std::int32_t rhs, std::int32_t* acc) {
   *acc += lhs * rhs;
 }
 
+// qiuhan 代表用来加载/保存寄存器值的一段连续内存buffer
 template <typename tScalarType, int tScalarCount>
 struct RegisterBuffer {
   using ScalarType = tScalarType;
@@ -49,15 +54,20 @@ struct RegisterBuffer {
   static_assert((kScalarCount & (kScalarCount - 1)) == 0,
                 "kScalarCount must be a power of two");
   static_assert(sizeof(RegisterType) % sizeof(ScalarType) == 0, "");
+  // qiuhan 应该是simd寄存器中的lane吧?
   static constexpr int kRegisterLanes =
       sizeof(RegisterType) / sizeof(ScalarType);
+  // qiuhan 需要多少个这样的寄存器
   static constexpr int kRegisterCount =
       (kScalarCount * sizeof(ScalarType) + sizeof(RegisterType) - 1) /
       sizeof(RegisterType);
 
+  // qiuhan 分配buffer
   RegisterType reg[kRegisterCount];
 };
 
+// qiuhan 对registerbuffer的抽象，buffer只是代表连续内
+// 而block则代表了这段内存更抽象的矩阵分块乘法中的子块的概念(有行和列的概念)
 template <typename tScalarType, int tRows, int tCols>
 struct RegisterBlock {
   using ScalarType = tScalarType;
@@ -72,18 +82,21 @@ struct RegisterBlock {
   BufferType buf;
 };
 
+// qiuhan 这个是结构体
 template <typename RegisterBlockType>
 struct RegisterBlockAddImpl {
   static RegisterBlockType Run(const RegisterBlockType& lhs,
                                const RegisterBlockType& rhs) {
     RegisterBlockType result;
     for (int i = 0; i < RegisterBlockType::kRegisterCount; i++) {
+      // qiuhan eg: __mm_add_128i
       result.buf.reg[i] = Add(lhs.buf.reg[i], rhs.buf.reg[i]);
     }
     return result;
   }
 };
 
+// qiuhan 这个是对上面的结构体封装的函数
 template <typename RegisterBlockType>
 RegisterBlockType RegisterBlockAdd(const RegisterBlockType& lhs,
                                    const RegisterBlockType& rhs) {
