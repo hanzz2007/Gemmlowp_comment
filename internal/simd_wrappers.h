@@ -118,10 +118,12 @@ struct FlipLhsRhs {
   using FlippedRhsType = RhsType;
   static const FlippedLhsType& FlippedLhs(const LhsType& lhs,
                                           const RhsType& rhs) {
+    (void)rhs;
     return lhs;
   }
   static const FlippedRhsType& FlippedRhs(const LhsType& lhs,
                                           const RhsType& rhs) {
+    (void)lhs;
     return rhs;
   }
 };
@@ -132,10 +134,12 @@ struct FlipLhsRhs<LhsType, RhsType, true> {
   using FlippedRhsType = LhsType;
   static const FlippedLhsType& FlippedLhs(const LhsType& lhs,
                                           const RhsType& rhs) {
+    (void)lhs;
     return rhs;
   }
   static const FlippedRhsType& FlippedRhs(const LhsType& lhs,
                                           const RhsType& rhs) {
+    (void)rhs;
     return lhs;
   }
 };
